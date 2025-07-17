@@ -2,5 +2,76 @@
 title: "Life Expectancy for Political Candidates"
 author: "Neelam Arshad"
 format: html
+execute: 
+  echo: false
+  warning: false
 ---
 
+
+```{r}
+#| message: false
+
+library(tidyverse) 
+library(primer.data)
+library(tidymodels)
+library(broom)
+library(marginaleffects)
+```
+
+
+$$
+Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \cdots + \beta_k X_k + \epsilon
+$$
+
+with $\epsilon \sim \mathcal{N}(0, \sigma^2)$.
+
+
+```{r}
+x <- governors |> 
+  select(last_name, year, state, sex, lived_after, election_age, region)
+```
+
+
+$$
+\widehat{\text{lived\_after}}_i = 58.3 + 0.15 \cdot \text{sexMale}_i - 0.68 \cdot \text{election\_age}_i
+$$
+
+```{r}
+#| cache: true
+fit_years <- linear_reg(engine = "lm") |> 
+  fit(lived_after ~ sex + election_age, data = x) 
+```
+
+```{r}
+# Load required library
+library(knitr)
+
+# Generate formatted table from model output
+tidy(fit_years, conf.int = TRUE) |>
+  select(term, estimate, conf.low, conf.high) |>
+  kable(
+    digits = 2,
+    col.names = c("Variable", "Estimate", "Lower CI", "Upper CI"),
+    caption = "Table: Linear model estimates for years lived after election. Data source: Governor dataset")
+```
+
+```{r}
+plot_predictions(fit_years, by = c("election_age", "sex")) +
+  labs(
+    title = "Predicted Years Lived After Election by Age and Sex",
+    subtitle = "Longevity declines more steeply with age for male candidates than females",
+    x = "Age at Election",
+    y = "Predicted Years Lived",
+    caption = "Source: U.S. Governor Candidates Dataset (1945–present)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13),
+    plot.caption = element_text(size = 10, face = "italic"),
+    legend.position = "bottom"
+  ) +
+  scale_color_manual(values = c("Female" = "#D55E00", "Male" = "#0072B2"))
+```
+
+The relationship between age and longevity has long been a subject of interest in public health and social science, especially when examining high-stress careers such as politics. Using data on U.S. governors, we explore whether the age at which a candidate is elected predicts how many years they live after the election. A potential weakness of our model is that the data may not be fully representative of all political candidates, which could bias our estimates of post-election lifespan. We model the number of years a governor lived after their election as a linear function of their sex and age at the time of election. For example, our model suggests that for each additional year of age at election, governors are expected to live approximately 0.68 fewer years after election (95% CI: -0.71 to -0.65), holding sex constant.
